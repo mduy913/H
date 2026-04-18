@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LUCKYWIN PRO</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Goldman&family=Orbitron:wght@900&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #ffdf00; --gold-dark: #b8860b; --bg: #050505; --red: #ff3e3e; --blue: #00c2ff; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Arial', sans-serif; }
+        body { background: var(--bg); color: #fff; margin: 0; height: 100vh; overflow: hidden; }
+
+        /* Giao diện chính */
+        .page { display: none; height: 100vh; width: 100vw; overflow-y: auto; padding-bottom: 90px; }
+        .active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .app-header {
+            height: 70px; background: rgba(0,0,0,0.9); border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center; padding: 0 15px;
+        }
+        .balance-pill {
+            background: #111; border: 1.5px solid var(--gold); border-radius: 20px;
+            padding: 6px 15px; color: var(--gold); font-weight: bold; font-family: 'Orbitron';
+        }
+
+        /* Form Rút Tiền */
+        .withdraw-card {
+            background: #111; margin: 15px; border-radius: 25px; padding: 25px;
+            border: 1px solid #222; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .input-box {
+            width: 100%; padding: 15px; background: #000; border: 1px solid #333;
+            border-radius: 12px; color: #fff; margin-bottom: 15px; font-weight: bold;
+        }
+        .btn-action {
+            width: 100%; padding: 18px; border: none; border-radius: 12px;
+            font-weight: 900; text-transform: uppercase; cursor: pointer;
+        }
+        .btn-gold { background: linear-gradient(180deg, var(--gold), var(--gold-dark)); color: #000; }
+
+        /* Game Stage */
+        .stage {
+            background: radial-gradient(circle, #222 0%, #000 100%);
+            margin: 15px; border-radius: 35px; border: 2px solid #333;
+            padding: 30px 10px; text-align: center;
+        }
+        .timer { font-family: 'Orbitron'; font-size: 55px; color: var(--gold); margin-bottom: 10px; }
+
+        .bet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 15px; }
+        .bet-btn {
+            height: 90px; border-radius: 20px; border: none; font-size: 30px; font-weight: 900; color: #fff;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.4);
+        }
+        .tai { background: linear-gradient(180deg, #ff4d4d, #900); }
+        .xiu { background: linear-gradient(180deg, #0099ff, #003366); }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: fixed; bottom: 0; width: 100%; height: 75px; background: #0a0a0a;
+            display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #222;
+        }
+        .tab-item { color: #555; font-size: 11px; text-align: center; font-weight: bold; }
+        .tab-item.active { color: var(--gold); }
+    </style>
+</head>
+<body>
+
+    <div id="p-lobby" class="page active">
+        <div class="app-header">
+            <b style="color:var(--gold); font-family:'Orbitron';" onclick="adm()">LUCKYWIN</b>
+            <div class="balance-pill">💰 <span id="bal-l">0</span></div>
+        </div>
+        <div style="padding:20px;">
+            <div class="withdraw-card" onclick="showPage('p-tx')">
+                <h2 style="margin:0; color:var(--gold);">TÀI XỈU MD5</h2>
+                <p style="color:#555; margin:5px 0 0;">Sòng bạc chuyên nghiệp</p>
+            </div>
+            <div class="withdraw-card" style="opacity:0.5">
+                <h2 style="margin:0; color:var(--gold);">XÓC ĐĨA VIP</h2>
+                <p style="color:#555; margin:5px 0 0;">Đang bảo trì...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="p-tx" class="page">
+        <div class="app-header">
+            <span onclick="showPage('p-lobby')" style="color:#aaa;">❮ TRỞ VỀ</span>
+            <div class="balance-pill">💰 <span id="bal-tx">0</span></div>
+        </div>
+        <div class="stage">
+            <div class="timer" id="timer">30</div>
+            <div id="dice" style="font-size:70px;">🎲🎲🎲</div>
+        </div>
+        <div class="bet-grid">
+            <button class="bet-btn tai" onclick="bet('tai')">TÀI</button>
+            <button class="bet-btn xiu" onclick="bet('xiu')">XỈU</button>
+        </div>
+        <div style="padding:20px; color:#555; font-size:12px; text-align:center;">
+            MỨC CƯỢC: <span id="cur-bet">100,000</span>đ (Ấn vào để đổi)
+        </div>
+    </div>
+
+    <div id="p-withdraw" class="page">
+        <div class="app-header"><h3 style="color:var(--gold); margin:0 auto;">RÚT TIỀN VỀ ATM</h3></div>
+        <div class="withdraw-card">
+            <select id="w-bank" class="input-box">
+                <option value="">-- CHỌN NGÂN HÀNG --</option>
+                <option>MB BANK</option><option>VIETCOMBANK</option><option>TECHCOMBANK</option><option>MOMO</option>
+            </select>
+            <input type="text" id="w-stk" class="input-box" placeholder="SỐ TÀI KHOẢN">
+            <input type="text" id="w-name" class="input-box" placeholder="TÊN CHỦ THẺ (VIẾT KHÔNG DẤU)">
+            <input type="number" id="w-amt" class="input-box" placeholder="SỐ TIỀN RÚT (TỐI THIỂU 100K)">
+            <p style="color:#777; font-size:11px; margin-bottom:15px;">* Lệnh rút sẽ được Admin duyệt trong 5-30 phút.</p>
+            <button class="btn-action btn-gold" onclick="handleWithdraw()">GỬI LỆNH RÚT</button>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab-item active" onclick="showPage('p-lobby')">SẢNH</div>
+        <div class="tab-item" onclick="showPage('p-withdraw')">RÚT TIỀN</div>
+        <div class="tab-item" onclick="alert('CSKH: @AdminLuckyWin')">HỖ TRỢ</div>
+    </div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://shopmduy-default-rtdb.asia-southeast1.firebasedatabase.app" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let curU = "khach_vip"; // Thay bằng logic đăng nhập của sếp
+    let userBal = 0, timeLeft = 30, currentBet = 100000;
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        if(id === 'p-lobby') document.querySelectorAll('.tab-item')[0].classList.add('active');
+        if(id === 'p-withdraw') document.querySelectorAll('.tab-item')[1].classList.add('active');
+    }
+
+    // Theo dõi ví
+    db.ref('users/'+curU).on('value', s => {
+        userBal = s.val()?.balance || 0;
+        document.getElementById('bal-l').innerText = document.getElementById('bal-tx').innerText = userBal.toLocaleString();
+    });
+
+    // RÚT TIỀN
+    function handleWithdraw() {
+        const bank = document.getElementById('w-bank').value;
+        const stk = document.getElementById('w-stk').value;
+        const name = document.getElementById('w-name').value;
+        const amt = parseInt(document.getElementById('w-amt').value);
+
+        if(!bank || !stk || !name || !amt) return alert("Vui lòng điền đủ thông tin!");
+        if(amt < 100000) return alert("Số tiền rút tối thiểu là 100.000đ!");
+        if(amt > userBal) return alert("Số dư không đủ!");
+
+        // Trừ tiền và gửi lệnh cho Admin
+        db.ref('users/'+curU+'/balance').transaction(v => v - amt);
+        db.ref('withdraw_requests').push({
+            user: curU, bank: bank, stk: stk, name: name, amount: amt, time: Date.now()
+        });
+        alert("Gửi lệnh thành công! Vui lòng chờ Admin duyệt.");
+    }
+
+    // GAME LOOP
+    setInterval(() => {
+        timeLeft--;
+        if(timeLeft < 0) timeLeft = 35;
+        let v = timeLeft > 30 ? "MỞ" : (timeLeft < 10 ? "0"+timeLeft : timeLeft);
+        document.getElementById('timer').innerText = v;
+        if(timeLeft === 0) {
+            let res = Math.random() > 0.5 ? 'tai' : 'xiu';
+            document.getElementById('dice').innerText = res === 'tai' ? '⚅⚄⚃' : '⚀⚁⚂';
+        }
+        if(timeLeft === 35) document.getElementById('dice').innerText = "🎲🎲🎲";
+    }, 1000);
+
+    function bet(side) {
+        if(timeLeft < 5 || timeLeft > 30) return alert("Hết giờ cược!");
+        if(userBal < currentBet) return alert("Ví không đủ!");
+        db.ref('users/'+curU+'/balance').transaction(v => v - currentBet);
+        alert("Đã cược " + side.toUpperCase() + " " + currentBet.toLocaleString());
+    }
+
+    function adm() {
+        let p = prompt("Nhập mã Admin:");
+        if(p === "123") {
+            let u = prompt("Tên khách:");
+            let m = parseInt(prompt("Số tiền cộng:"));
+            db.ref('users/'+u+'/balance').transaction(v => (v||0) + m);
+        }
+    }
+</script>
+</body>
+</html>
